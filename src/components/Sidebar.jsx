@@ -6,9 +6,7 @@ export default function Sidebar() {
   const links = [
     { path: "/pasajero/dashboard", label: "Dashboard" },
     { path: "/pasajero/vuelos", label: "Mis Vuelos" },
-    { path: "/pasajero/itinerarios", label: "Itinerarios" },
     { path: "/pasajero/alertas", label: "Alertas" },
-    { path: "/pasajero/destinos", label: "Destinos" },
     { path: "/pasajero/perfil", label: "Perfil" },
   ];
 
