@@ -76,15 +76,15 @@ export default function Login() {
           Entrar
         </button>
 
-        <p className="text-sm text-center">
-          ¿No tienes cuenta?{" "}
-          <span
-            onClick={() => navigate("/registro")}
-            className="text-blue-700 font-semibold cursor-pointer hover:underline"
+        <div className="text-center">
+          <button
+            type="button"
+            className="text-sm text-blue-600 hover:underline"
+            onClick={() => navigate("/register")}
           >
-            Regístrate
-          </span>
-        </p>
+            ¿No tienes cuenta? Registrarse
+          </button>
+        </div>
       </form>
     </div>
   );

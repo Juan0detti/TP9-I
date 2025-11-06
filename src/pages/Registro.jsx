@@ -26,12 +26,15 @@ export default function Registro() {
         body: JSON.stringify(form),
       });
 
-      if (!res.ok) throw new Error("Error en el registro");
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        throw new Error(errBody.error || "Error en el registro");
+      }
 
       alert("Registro exitoso. Inicia sesión.");
       navigate("/login");
     } catch (err) {
-      setError("No se pudo registrar el usuario.");
+      setError("No se pudo registrar el usuario. " + err.message);
     }
   };
 
@@ -42,19 +45,20 @@ export default function Registro() {
         className="bg-white p-8 rounded-2xl shadow-xl w-80 space-y-4"
       >
         <h2 className="text-2xl font-bold text-center text-blue-700">
-          Registro
+          Iniciar Sesión
         </h2>
 
         {error && <p className="text-red-600 text-sm text-center">{error}</p>}
 
         <input
-          type="text"
+          type="Text"
           name="nombre"
           placeholder="Nombre completo"
           value={form.nombre}
           onChange={handleChange}
           className="w-full border rounded-xl p-2"
         />
+
         <input
           type="email"
           name="email"
@@ -71,24 +75,14 @@ export default function Registro() {
           onChange={handleChange}
           className="w-full border rounded-xl p-2"
         />
-
-        <button
-          type="submit"
-          className="w-full bg-blue-600 text-white rounded-xl p-2 hover:bg-blue-700 transition"
-        >
-          Registrarse
-        </button>
-
-        <p className="text-sm text-center">
-          ¿Ya tienes cuenta?{" "}
-          <span
-            onClick={() => navigate("/login")}
-            className="text-blue-700 font-semibold cursor-pointer hover:underline"
+          {error && <p className="text-red-600 mb-3">{error}</p>}
+          <button
+            type="submit"
+            className="w-full bg-green-600 text-white py-2 rounded"
           >
-            Inicia sesión
-          </span>
-        </p>
-      </form>
-    </div>
+            Crear cuenta
+          </button>
+        </form>
+      </div>
   );
 }
