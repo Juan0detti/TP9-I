@@ -185,11 +185,21 @@ function Aviones() {
   );
 }
 
-// ---------- FORMULARIO DE VUELOS ----------
+// ... (código anterior)
+
 // ---------- FORMULARIO DE VUELOS ----------
 function Vuelos() {
   const [vuelos, setVuelos] = useState([]);
   const [aviones, setAviones] = useState([]);
+
+  const estadosDisponibles = [
+    "Programado",
+    "En curso",
+    "Atrasado",
+    "Cancelado",
+    "Completado",
+  ];
+
   const [vuelo, setVuelo] = useState({
     origen: "",
     destino: "",
@@ -197,14 +207,17 @@ function Vuelos() {
     fecha_llegada: "",
     precio: "",
     avionID: "",
+    // ⬅️ VALOR POR DEFECTO ACTUALIZADO
+    estado: "Programado",
   });
+
+  const token = localStorage.getItem("token");
 
   const handleChange = (e) =>
     setVuelo({ ...vuelo, [e.target.name]: e.target.value });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const token = localStorage.getItem("token");
     console.log(vuelo);
 
     const res = await fetch("http://localhost:3000/api/v1/vuelos", {
@@ -225,6 +238,7 @@ function Vuelos() {
         fecha_llegada: "",
         precio: "",
         avionID: "",
+        estado: "Programado",
       });
       fetchVuelos();
     } else {
@@ -233,8 +247,53 @@ function Vuelos() {
     }
   };
 
+  // ✅ FUNCIÓN PARA ELIMINAR VUELO (DELETE)
+  const handleDelete = async (id) => {
+    if (!window.confirm("¿Estás seguro de que quieres ELIMINAR este vuelo?"))
+      return;
+
+    const res = await fetch(`http://localhost:3000/api/v1/vuelos/${id}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (res.ok) {
+      alert("Vuelo eliminado 🗑️");
+      fetchVuelos();
+    } else {
+      const data = await res.json();
+      alert(`Error al eliminar: ${data.error || "Fallo en el servidor."}`);
+    }
+  };
+
+  // ✅ FUNCIÓN PARA CAMBIAR EL ESTADO (PUT)
+  const handleStatusChange = async (id, newStatus) => {
+    // Validar si el estado realmente cambió
+    if (!newStatus) return;
+
+    const res = await fetch(`http://localhost:3000/api/v1/vuelos/${id}`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ estado: newStatus }), // Enviamos el nuevo estado
+    });
+
+    if (res.ok) {
+      alert(`Estado del vuelo ${id} cambiado a ${newStatus}!`);
+      fetchVuelos(); // Recarga la lista
+    } else {
+      const data = await res.json();
+      alert(
+        `Error al cambiar estado: ${data.error || "Fallo en el servidor."}`
+      );
+    }
+  };
+
   const fetchVuelos = async () => {
-    const token = localStorage.getItem("token");
     const res = await fetch("http://localhost:3000/api/v1/vuelos", {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -245,7 +304,6 @@ function Vuelos() {
   };
 
   const fetchAviones = async () => {
-    const token = localStorage.getItem("token");
     const res = await fetch("http://localhost:3000/api/v1/avion", {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -264,6 +322,7 @@ function Vuelos() {
     <div>
       <h2 className="text-2xl mb-2 font-semibold">Registrar Vuelo</h2>
       <form onSubmit={handleSubmit} className="grid gap-2 mb-4">
+        {/* ... (Inputs de Origen, Destino, Fechas, Precio) ... */}
         <input
           name="origen"
           value={vuelo.origen}
@@ -302,6 +361,7 @@ function Vuelos() {
           type="number"
           className="border p-2 rounded"
         />
+        {/* ... (Select de Avión) ... */}
         <select
           name="avionID"
           value={vuelo.avionID}
@@ -321,15 +381,74 @@ function Vuelos() {
       </form>
 
       <h3 className="text-lg font-semibold mb-2">Vuelos registrados:</h3>
-      <ul className="border rounded p-3 bg-gray-50">
-        {vuelos.map((v) => (
-          <li key={v.id} className="border-b py-1">
-            {v.origen} → {v.destino} | ${v.precio} |{" "}
-            {new Date(v.fecha_salida).toLocaleString()} →{" "}
-            {new Date(v.fecha_llegada).toLocaleString()}
-          </li>
-        ))}
-      </ul>
+
+      <div className="overflow-x-auto border rounded bg-white">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Ruta
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Fechas
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Avión/Precio
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Estado
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Acciones
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {vuelos.map((v) => (
+              <tr key={v.id}>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  {v.origen} → {v.destino}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {new Date(v.fecha_salida).toLocaleDateString()}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  Avión: {v.avionID} | ${v.precio}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  {/* ⬅️ SELECT para cambiar estado usando los valores ENUM */}
+                  <select
+                    value={v.estado || "Programado"}
+                    onChange={(e) => handleStatusChange(v.id, e.target.value)}
+                    className={`p-1 rounded border ${
+                      v.estado === "Cancelado"
+                        ? "bg-red-100 text-red-700 border-red-300"
+                        : v.estado === "Completado"
+                        ? "bg-green-100 text-green-700 border-green-300"
+                        : "bg-yellow-100 text-yellow-700 border-yellow-300"
+                    }`}
+                  >
+                    {estadosDisponibles.map((estado) => (
+                      <option key={estado} value={estado}>
+                        {estado}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  {/* ⬅️ Botón Eliminar */}
+                  <button
+                    onClick={() => handleDelete(v.id)}
+                    className="text-red-600 hover:text-red-900 ml-4 p-1"
+                  >
+                    🗑️ Eliminar
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 
 export default function Dashboard() {
   const [vuelos, setVuelos] = useState([]);
-  const [misVuelos, setMisVuelos] = useState([]); // Ahora contendrá los pasajes con info de vuelo
+  const [misVuelos, setMisVuelos] = useState([]);
+  const [alertasVuelos, setAlertasVuelos] = useState([]); // ⬅️ Nuevo estado para alertas
   const [filtros, setFiltros] = useState({
     origen: "",
     destino: "",
@@ -15,13 +16,15 @@ export default function Dashboard() {
 
   const usuario = JSON.parse(localStorage.getItem("usuario"));
   const navigate = useNavigate();
-  const token = localStorage.getItem("token"); // Obtenemos el token para la autenticación
+  const token = localStorage.getItem("token");
 
   useEffect(() => {
     fetchVuelos();
+    fetchVuelosAlertas(); // ⬅️ Obtener vuelos en alerta
     if (token) fetchMisVuelos();
   }, [token]);
 
+  // FUNCIÓN PARA OBTENER TODOS LOS VUELOS (se usa para la tabla y las alertas)
   const fetchVuelos = async () => {
     try {
       const res = await fetch("http://localhost:3000/api/v1/vuelos", {
@@ -33,27 +36,38 @@ export default function Dashboard() {
       if (!res.ok) throw new Error("Error al obtener los vuelos");
       const data = await res.json();
       setVuelos(data);
+      // ⬅️ Llamamos al filtro de alertas inmediatamente después de obtener los datos
+      setAlertasVuelos(
+        data.filter((v) => v.estado === "Atrasado" || v.estado === "Cancelado")
+      );
     } catch (error) {
-      console.error("❌ Error:", error);
+      console.error("❌ Error al obtener vuelos disponibles:", error);
     }
+  };
+
+  // ⬅️ Función ahora simple, solo llama a fetchVuelos y setea las alertas
+  const fetchVuelosAlertas = () => {
+    // La lógica de fetching y filtrado está ahora en fetchVuelos
+    // Esta función actúa como un simple disparador en el useEffect
   };
 
   const fetchMisVuelos = async () => {
     try {
       if (!token) return;
-      console.log("ok");
 
       const res = await fetch(`http://localhost:3000/api/v1/pasajes/mis`, {
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`, // El token identifica al usuario
+          Authorization: `Bearer ${token}`,
         },
       });
 
-      if (!res.ok) throw new Error("Error al obtener los pasajes del usuario");
+      if (!res.ok) {
+        console.error(`Error ${res.status} al obtener mis pasajes.`);
+        throw new Error(`Error ${res.status} al obtener los pasajes.`);
+      }
 
       const data = await res.json();
-      // data ya contiene los campos planos (origen, destino, precio_pagado, etc.)
       setMisVuelos(data);
     } catch (error) {
       console.error("❌ Error al obtener mis pasajes:", error);
@@ -64,7 +78,6 @@ export default function Dashboard() {
     setFiltros((prev) => ({ ...prev, [campo]: valor }));
   };
 
-  // ⬅️ Función de navegación a la página de compra
   const handleSelectVuelo = (vueloId) => {
     navigate(`/comprar-pasajes/${vueloId}`);
   };
@@ -114,9 +127,6 @@ export default function Dashboard() {
             <ul className="space-y-3">
               {misVuelos.map((pasaje) => (
                 <li key={pasaje.id} className="border-b pb-2 pt-1">
-                  {/* ⬅️ ESTRUCTURA DE RENDERIZADO CORREGIDA
-                      Asumimos que el backend envía: pasaje.asiento, pasaje.tipo_asiento, pasaje.origen, pasaje.precio_pagado, etc.
-                  */}
                   <p className="font-semibold text-sky-700">
                     Asiento: {pasaje.asiento || "N/A"} (
                     {pasaje.tipo_asiento || "N/A"})
@@ -136,13 +146,29 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Últimas alertas */}
+        {/* 🚨 Últimas alertas (Contenido Dinámico) 🚨 */}
         <div className="bg-white p-6 rounded-2xl shadow-md">
           <h3 className="text-xl font-semibold mb-3">🚨 Últimas alertas</h3>
-          <ul className="text-gray-600">
-            <li>✅ Vuelo a Madrid reprogramado para el 12/11</li>
-            <li>⚠️ Retraso en vuelo a Lima</li>
-            <li>ℹ️ Nueva promoción en vuelos nacionales</li>
+          <ul className="text-gray-600 space-y-2">
+            {alertasVuelos.length === 0 ? (
+              <li className="text-green-600 font-medium">
+                ✅ Todo en orden. No hay atrasos ni cancelaciones.
+              </li>
+            ) : (
+              alertasVuelos.map((v) => (
+                <li
+                  key={v.id}
+                  className={`font-semibold ${
+                    v.estado === "Cancelado"
+                      ? "text-red-600"
+                      : "text-orange-600"
+                  }`}
+                >
+                  {v.estado === "Cancelado" ? "❌ CANCELADO" : "⚠️ ATRAZADO"}{" "}
+                  Vuelo {v.origen} → {v.destino}
+                </li>
+              ))
+            )}
           </ul>
         </div>
       </div>
@@ -210,35 +236,6 @@ export default function Dashboard() {
                       }
                     />
                   </th>
-                  <th className="py-2 px-4 text-left">
-                    <label className="text-xs font-normal block mb-1">
-                      Precio Mín.
-                    </label>
-                    <input
-                      type="number"
-                      placeholder="Min"
-                      className="bg-sky-50 border border-gray-300 rounded px-2 py-1 w-full text-sm"
-                      value={filtros.minPrecio}
-                      onChange={(e) =>
-                        handleFiltrar("minPrecio", e.target.value)
-                      }
-                    />
-                    <label className="text-xs font-normal block mt-2 mb-1">
-                      Precio Máx.
-                    </label>
-                    <input
-                      type="number"
-                      placeholder="Max"
-                      className="bg-sky-50 border border-gray-300 rounded px-2 py-1 w-full text-sm"
-                      value={filtros.maxPrecio}
-                      onChange={(e) =>
-                        handleFiltrar("maxPrecio", e.target.value)
-                      }
-                    />
-                  </th>
-                  <th className="py-2 px-4 text-left text-sm font-semibold text-sky-700">
-                    Seleccionar
-                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -253,9 +250,6 @@ export default function Dashboard() {
                     <td className="py-2 px-4">{vuelo.destino}</td>
                     <td className="py-2 px-4">
                       {new Date(vuelo.fecha_salida).toLocaleDateString()}
-                    </td>
-                    <td className="py-2 px-4 text-sm font-bold text-sky-700">
-                      ${vuelo.precio}
                     </td>
                     {/* Columna de Acción */}
                     <td className="py-2 px-4 font-semibold text-sky-600">
